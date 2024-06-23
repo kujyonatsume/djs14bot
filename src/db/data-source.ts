@@ -9,7 +9,7 @@ export const orm = new DataSource({
     //  username: "root",
     //  password: "root",
     type: "better-sqlite3",
-    database: "./data/test.db",
+    database: "./data/database.db",
     synchronize: true,
     logging: false,
     entities: ['src/db/entity/*.ts'],

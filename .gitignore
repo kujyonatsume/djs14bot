@@ -1,5 +1,6 @@
 .vscode
 *lock*
 /node_modules
-/data
+/data/config.json
+/data/*.db
 -*
