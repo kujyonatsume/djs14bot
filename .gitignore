@@ -1,0 +1,5 @@
+.vscode
+*lock*
+/node_modules
+/data
+-*

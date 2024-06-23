@@ -1,0 +1,35 @@
+import { inlineCode } from "discord.js";
+import { Command, Module, Option } from "../decorator";
+import { Twitter } from "./Twitter";
+import { db } from "../../db";
+
+export class Support extends Module {
+    get isSupported() { return this.i.user.id == this.client.application.owner.id }
+
+    @Command({ local: "刪除推特爬蟲", name: "delete-twitter-notify", permission: "Administrator", only: true })
+    async deleteNotify(@Option({ local: "帳號", exec: Twitter.allNotify }) screen_name: string) {
+        if (this.isSupported) {
+            let dbuser = await db.TwitterUser.findUser(screen_name)
+            await db.TwitterNotify.remove(dbuser.notifys)
+            await dbuser.remove()
+            return await this.SuccessEmbed(`已刪除爬蟲資料 ${inlineCode(screen_name)}`, true)
+        }
+        return await this.ErrorEmbed(`只能在特定伺服器使用`, true)
+    }
+
+    @Command({ local: "錯誤回報", name: "report", permission: "Administrator" })
+    async report(@Option({ local: "內容" }) msg: string) {
+        const { owner } = this.client.application
+        let check: any
+        if ('send' in owner) {
+            check = await owner.send({ embeds: [this.Embed.setColor('Aqua').setDescription(msg).setAuthor({ name: this.i.user.displayName, iconURL: this.i.user.avatarURL() })] })
+        }
+        if (check) await this.SuccessEmbed(`已回報給開發者`, true)
+        else await this.ErrorEmbed(`無法回報給開發者`, true)
+    }
+
+    @Command({ local: "邀請連結", name: "invite" })
+    async invite() {
+        await this.SuccessEmbed(`[邀請連結](https://discord.com/api/oauth2/authorize?client_id=${this.client.user.id}&permissions=8&scope=bot+applications.commands)`, true)
+    }
+}

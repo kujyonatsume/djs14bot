@@ -1,0 +1,1 @@
+typeorm-ts-node-commonjs %1:%2 ./src/db/migration/%3 -d src/db/data-source.ts
