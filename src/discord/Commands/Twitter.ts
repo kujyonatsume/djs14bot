@@ -154,20 +154,20 @@ export class Twitter extends Module {
         let notify = await db.TwitterNotify.findOneBy({ guildId: this.i.guildId, targetId: dbUser.id })
         if (notify) {
             if (channel?.id) notify.channelId = channel.id
-            notify.text = text ?? ""
+            if (text) notify.text = text
             await notify.save()
             return await this.SuccessEmbed(eb => eb.setDescription(`已更新爬蟲 ${inlineCode(screen_name)}`)
-                .addFields({ name: "通知頻道", value: `<#${notify.channelId}>` }, { name: "通知訊息", value: text ?? "未設定" }), true)
+                .addFields({ name: "通知頻道", value: `<#${notify.channelId}>` }, { name: "通知訊息", value: notify.text ?? "未設定" }), true)
         }
         return await this.SuccessEmbed(`伺服器不存在此爬蟲, 如果要新增請使用 ${inlineCode("/twitter notify create")}`, true)
     }
 
     @Twitter.notify({ local: "篩選推文", name: "filier", desc: "篩選推文狀態 | 預設值: 發佈 引用" })
     async filierNotifyStatus(@Option({ local: "帳號", exec: Twitter.guildNotify }) screen_name: string,
-        @Option({ local: "發佈", required: false, choices: Twitter.YesOrNo }) post?: number,
-        @Option({ local: "轉推", required: false, choices: Twitter.YesOrNo }) retweet?: number,
-        @Option({ local: "引用", required: false, choices: Twitter.YesOrNo }) qoute?: number,
-        @Option({ local: "回復", required: false, choices: Twitter.YesOrNo }) reply?: number
+        @Option({ local: "發佈", required: false }) post?: boolean,
+        @Option({ local: "轉推", required: false }) retweet?: boolean,
+        @Option({ local: "引用", required: false }) qoute?: boolean,
+        @Option({ local: "回復", required: false }) reply?: boolean
     ) {
         const dbUser = await Twitter.FindOrCreateUser(screen_name)
         let notify = await db.TwitterNotify.findOneBy({ guildId: this.i.guildId, targetId: dbUser.id })
@@ -178,11 +178,10 @@ export class Twitter extends Module {
         await notify.save()
         return await this.SuccessEmbed(`${screen_name} 將會搜尋 ${[...data].map(inlineCode).join(" ")} 貼文`, true)
 
-        function update(type: string, value?: number) {
+        function update(type: string, value?: boolean) {
             console.log(type, value);
-
-            if (!value) return
-            if (value > 0) data.add(type)
+            if(typeof value !== "boolean") return
+            if (value) data.add(type)
             else data.delete(type)
         }
     }
