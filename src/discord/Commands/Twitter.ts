@@ -123,7 +123,7 @@ export class Twitter extends Module {
         }))
     }
 
-    static YesOrNo = [{ name: "Yes", value: 1, name_localizations: { "zh-TW": "是" } }, { name: "No", value: -1, name_localizations: { "zh-TW": "否" } }]
+    static YesOrNo = [{ name: "Yes", value: 1, name_localizations: { "zh-TW": "是" } }, { name: "No", value: 0, name_localizations: { "zh-TW": "否" } }]
 
     @Twitter.notify({ local: "新增爬蟲", name: "create", desc: "若無符合的帳號請自行輸入 通知身分組請直接加入通知訊息中" })
     async cteateNotify(@Option({ local: "帳號", exec: Twitter.allNotify }) screen_name: string,

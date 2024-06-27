@@ -1,5 +1,5 @@
 import { randomInt } from 'crypto';
-import { Client, Emoji, Message } from 'discord.js';
+import { Client, Emoji, Message, User } from 'discord.js';
 
 declare global {
     interface Array<T> {
@@ -60,7 +60,7 @@ Object.defineProperty(Message.prototype, "emojiParse", {
 
 Object.defineProperty(Client.prototype, "owner", {
     get(this: Client<true>) {
-        if ('send' in this.application.owner)
+        if (this.application.owner instanceof User)
             return this.application.owner
         else return this.application.owner.owner.user
     }
