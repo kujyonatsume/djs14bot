@@ -20,7 +20,7 @@ export class TwitterNotify extends IdxEntity {
     @Column({ nullable: false })
     targetId: string
 
-    @Column({ nullable: false, default: `["發佈, "引用"]` })
+    @Column({ nullable: false, default: `["發佈", "引用"]` })
     type: string
 
     get Text() {
