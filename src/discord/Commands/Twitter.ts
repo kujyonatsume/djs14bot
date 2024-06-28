@@ -192,7 +192,8 @@ export class Twitter extends Module {
             users += `${inlineCode((await notify.target).screen_name)}\n`
             status += `${(JSON.parse(notify.type) as string[]).map(inlineCode).join(" ")}\n`
         }
-        if (users == "") await this.ErrorEmbed(`伺服器未加入爬蟲`)
+        if (users == "") return await this.ErrorEmbed(`伺服器未加入爬蟲`)
+        if(status == "") status += "沒有選擇的狀態"
         return await this.SuccessEmbed(x => x.setTitle("伺服器推文通知列表")
             .setFields({ name: "使用者", value: users, inline: true }, { name: "已啟用", value: status, inline: true }), true)
     }
