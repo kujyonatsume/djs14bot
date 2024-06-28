@@ -156,7 +156,7 @@ export class Twitter extends Module {
             if (text) notify.text = text
             await notify.save()
             return await this.SuccessEmbed(eb => eb.setDescription(`已更新爬蟲 ${inlineCode(screen_name)}`)
-                .addFields({ name: "通知頻道", value: `<#${notify.channelId}>` }, { name: "通知訊息", value: notify.text ?? "未設定" }), true)
+                .addFields({ name: "通知頻道", value: `<#${notify.channelId}>` }, { name: "通知訊息", value: notify.Text ?? "未設定" }), true)
         }
         return await this.SuccessEmbed(`伺服器不存在此爬蟲, 如果要新增請使用 ${inlineCode("/twitter notify create")}`, true)
     }
