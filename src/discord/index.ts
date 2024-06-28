@@ -124,7 +124,8 @@ export async function DiscordStart(token: string, guildId?: string) {
                 const { module, command, subOptions } = await isCommand(interaction)
                 try {
                     let line = `${interaction.user.displayName} ${command.orgName}`
-                    console.log(`[command start] ${interaction.commandName} ${line}`);
+                    console.log()
+                    console.log(`\n${new Date().toLocaleTimeString()}[command start] ${interaction.commandName} ${line}`);
 
                     module.setInter(interaction)
                     let options = subOptions.map((x => {
