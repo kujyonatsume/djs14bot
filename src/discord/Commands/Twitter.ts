@@ -1,7 +1,8 @@
+import { Like } from "typeorm"
 import { db } from "../../db";
 import { twitterApi, TwitterList } from "../../twitter";
 import { Group, Module, Option, SubGroup } from "../decorator";
-import { AutocompleteInteraction, ChannelType, hyperlink, inlineCode, Role, TextChannel } from 'discord.js';
+import { AutocompleteInteraction, ChannelType, GuildBasedChannel, hyperlink, inlineCode, Role, TextChannel } from 'discord.js';
 import config from "../../config"
 
 @Group({ local: "推文", permission: "Administrator" })
@@ -29,23 +30,34 @@ export class Twitter extends Module {
             try {
                 await Promise.delay(config.ms)
                 const dbusers = await db.TwitterUser.find()
-                const tweets = await Twitter.List.getTweets()
-
+                const tweets = (await Twitter.List.getTweets()).sort((a, b) => Number(a.id) - Number(b.id))
                 for (const user of dbusers) {
-                    const userTweets = tweets.filter(x => x.author.id == user.id && Number(x.id) > Number(user.last_tweet)).sort((a, b) => Number(a.id) - Number(b.id))
+                    if (user.notifys.length == 0) {
+                        await Twitter.List.removeMamber((await user.remove()).id)
+                        console.log(`已將 ${user.screen_name} 移除\n`)
+                        continue
+                    }
+
+                    const userTweets = tweets.filter(x => x.author.id == user.id && Number(x.id) > Number(user.last_tweet))
 
                     if (userTweets.length == 0) continue
 
-                    console.log(`find ${userTweets.length} tweets from ${user.screen_name}`)
+                    console.log(new Date().toLocaleString());
+                    console.log(`${user.name}(${user.screen_name}) 有 ${userTweets.length} 則新推文`)
+                    console.log(userTweets.map(x => `https://x.com/${x.author.screen_name}/status/${x.id}`).join("\n"))
+                    console.log(`已將 ${user.screen_name} 的推文發到 ${user.notifys.length} 個頻道\n`)
 
                     for (const notify of user.notifys) {
 
-                        const channel = this.client.channels.cache.get(notify.channelId)
-                        if (!channel || !('send' in channel)) continue
+                        const channel = this.client.channels.cache.get(notify.channelId) as TextChannel
+                        if (!channel?.send) {
+                            await notify.remove()
+                            continue
+                        }
 
                         for (const tweet of userTweets) {
 
-                            if (!notify.type.includes(tweet.type)) continue
+                            if (!notify.type.includes(tweet?.type)) continue
 
                             const embeds = [this.Embed.setColor("Blue")
                                 .setAuthor(tweet.author.Embed)
@@ -54,34 +66,43 @@ export class Twitter extends Module {
                                 .setDescription(tweet.text)
                                 .setTimestamp(tweet.created_at)]
 
-                            if (tweet.urls.length)
-                                embeds[0].addFields({ name: "連結", value: tweet.urls.join("\n") })
+                            if (tweet.urls?.length) {
+                                let url = tweet.urls.join("\n")
+                                if (url.length > 0)
+                                    embeds[0].addFields({ name: "連結", value: tweet.urls.join("\n") })
+                            }
+                            try {
+                                if (!tweet.medias)
+                                    await channel.send({ content: notify.Text, embeds })
 
-                            if (!tweet.medias)
-                                await channel.send({ content: notify.Text, embeds })
-
-                            else if (tweet.medias[0].type == "photo") {
-                                embeds[0].setImage(tweet.medias[0].best_url)
-                                for (const media of tweet.medias.slice(1)) {
-                                    embeds.push(this.Embed.setColor("Blue").setImage(media.best_url))
+                                else if (tweet.medias[0].type == "photo") {
+                                    embeds[0].setImage(tweet.medias[0].best_url)
+                                    for (const media of tweet.medias.slice(1)) {
+                                        embeds.push(this.Embed.setColor("Blue").setImage(media.best_url))
+                                    }
+                                    await channel.send({ content: notify.Text, embeds })
                                 }
-                                await channel.send({ content: notify.Text, embeds })
+                                else {
+                                    await channel.send({ content: notify.Text, embeds })
+                                    await channel.send({ content: tweet.medias.map(media => hyperlink(media.type, media.best_url)).join("\n") })
+                                }
+                            } catch (e) {
+                                console.log(new Date().toLocaleString());
+                                console.log(e)
                             }
-                            else {
-                                await channel.send({ content: notify.Text, embeds })
-                                await channel.send({ content: tweet.medias.map(media => hyperlink(media.type, media.best_url)).join("\n") })
-                            }
-
                         }
-
                     }
-                    user.last_tweet = userTweets[userTweets.length - 1].id
+
+                    var last = userTweets.pop();
+                    user.last_tweet = last.id
+                    user.screen_name = last.author.screen_name
                     await user.save()
-                    console.log(`${user.screen_name}'s tweet posted to ${user.notifys.length} channel`)
                 }
             }
             catch (e) {
-                console.log(e.message)
+                console.log(new Date().toLocaleString());
+                console.log(e)
+                console.log("\n");
             }
         }
     }
@@ -117,19 +138,35 @@ export class Twitter extends Module {
         return i.client.guilds.cache.map(x => { return { name: x.name, value: x.id } })
     }
 
-    static async allNotify(mod: Twitter, i: AutocompleteInteraction, current: string | number) {
-        return Promise.all((await db.TwitterNotify.find()).map(async x => {
-            let user = await x.target; return { name: user.screen_name, value: user.screen_name }
-        }))
+    static async allNotify(mod: Twitter, i: AutocompleteInteraction, current: string) {
+        var l = await Promise.all((await Promise.all((await db.TwitterNotify.find())
+            .filter(async x => (await x.target).screen_name.startsWith(current)))).map(async x => {
+                let user = await x.target;
+                return { name: user.screen_name, value: user.screen_name }
+            }))
+        l.length = 25
+        return l
+    }
+
+    static async allName(mod: Twitter, i: AutocompleteInteraction, current: string) {
+        var users = (await db.TwitterUser.find()).filter(x => x.screen_name.startsWith(current.replace(/(.*?)\/\/(.*?)\/|@/, "").split("?")[0]))
+            .map(x => ({ name: x.screen_name, value: x.screen_name }))
+        if (users.length <= 5) return users
+
+        var userset = new Set<{ name: string, value: string }>()
+        while (userset.size < 5) {
+            userset.add(users[Math.randomInt(users.length - 1)])
+        }
+        return Array.from(userset)
     }
 
     static YesOrNo = [{ name: "Yes", value: 1, name_localizations: { "zh-TW": "是" } }, { name: "No", value: 0, name_localizations: { "zh-TW": "否" } }]
 
     @Twitter.notify({ local: "新增爬蟲", name: "create", desc: "若無符合的帳號請自行輸入 通知身分組請直接加入通知訊息中" })
-    async cteateNotify(@Option({ local: "帳號", exec: Twitter.allNotify }) screen_name: string,
+    async cteateNotify(@Option({ local: "帳號", exec: Twitter.allName }) screen_name: string,
         @Option({ local: "通知頻道", channel_types: [ChannelType.GuildText, ChannelType.GuildAnnouncement] }) channel: TextChannel,
         @Option({ local: "通知訊息", required: false }) text?: string) {
-        if (screen_name[0] == "@") screen_name = screen_name.slice(1)
+        screen_name = screen_name.replace(/(.*?)\/\/(.*?)\/|@/, "").split("?")[0];
         const dbUser = await Twitter.FindOrCreateUser(screen_name)
 
         if (await db.TwitterNotify.existsBy({ guildId: this.i.guildId, targetId: dbUser.id }))
@@ -141,8 +178,6 @@ export class Twitter extends Module {
         await notify.save()
 
         return await this.SuccessEmbed(`已新增爬蟲 ${inlineCode(screen_name)}`, true)
-
-
     }
 
     @Twitter.notify({ local: "更新爬蟲", name: "update" })
@@ -179,7 +214,7 @@ export class Twitter extends Module {
 
         function update(type: string, value?: boolean) {
             console.log(type, value);
-            if(typeof value !== "boolean") return
+            if (typeof value !== "boolean") return;
             if (value) data.add(type)
             else data.delete(type)
         }
@@ -193,7 +228,7 @@ export class Twitter extends Module {
             status += `${(JSON.parse(notify.type) as string[]).map(inlineCode).join(" ")}\n`
         }
         if (users == "") return await this.ErrorEmbed(`伺服器未加入爬蟲`)
-        if(status == "") status += "沒有選擇的狀態"
+        if (status == "") status += "沒有選擇的狀態"
         return await this.SuccessEmbed(x => x.setTitle("伺服器推文通知列表")
             .setFields({ name: "使用者", value: users, inline: true }, { name: "已啟用", value: status, inline: true }), true)
     }

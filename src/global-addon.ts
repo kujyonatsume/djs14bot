@@ -20,9 +20,6 @@ Array.prototype.groupBy = function <T>(this: T[], fn: (v: T, i: number) => Prope
 }
 
 declare module "discord.js" {
-    export interface Client {
-        owner: User;
-    }
     export interface EventFunc {
         init(): Awaited<Promise<any>>;
         debug?(message: string): Awaited<Promise<any>>;
@@ -55,13 +52,5 @@ Object.defineProperty(Message.prototype, "emojiParse", {
     value(this: Message) {
         this.emojis = [...this.content.matchAll(/<?(a:)?(\w{2,32}):(\d{17,19})>?/)]
             .map(x => new Emoji(this.client, { animated: Boolean(x[1]), name: x[2], id: x[3] }));
-    }
-})
-
-Object.defineProperty(Client.prototype, "owner", {
-    get(this: Client<true>) {
-        if (this.application.owner instanceof User)
-            return this.application.owner
-        else return this.application.owner.owner.user
     }
 })

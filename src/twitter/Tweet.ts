@@ -54,7 +54,7 @@ export class TwitterTweet {
     reply_count: number
     constructor(data: TweetResult) {
         this.#data = data
-        if(!data.legacy) console.log(data);
+        if(!data?.legacy) return {} as TwitterTweet;
         
         this.id = data.rest_id
         this.views_count = Number(data.views?.count ?? 0)

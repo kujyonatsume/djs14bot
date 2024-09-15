@@ -1,4 +1,4 @@
-import { AttachmentBuilder, Client, codeBlock, Collection, EmbedBuilder, inlineCode, Interaction, Routes } from "discord.js";
+import { AttachmentBuilder, Client, codeBlock, Collection, EmbedBuilder, inlineCode, Interaction, Routes, TextChannel } from "discord.js";
 import * as AppModule from "./Commands";
 import { commands, IOption, count, OptionAnd, Module } from "./decorator";
 import { db } from "../db";
@@ -8,8 +8,8 @@ const modules = new Collection<string, Module>()
 export const client = new Client({ intents: 3276799 })
 
 export async function DiscordStart(token: string, guildId?: string) {
-    client.on("ready", async c => {
 
+    client.on("ready", async c => {
         for (const [key, Mod] of Object.entries(AppModule)) {
             const mod = new Mod(c)
             modules.set(key.toLowerCase(), mod)
@@ -31,7 +31,7 @@ export async function DiscordStart(token: string, guildId?: string) {
                     var s = ""
                     for (const [_, guild] of c.guilds.cache) {
                         const m = await guild.fetchOwner()
-                        s += `${guild.name} ${m.user} ${m.user.displayName}\n`
+                        s += `${guild.name}(${guild.id}) ${m.user} ${m.user.displayName}\n`
                     }
                     await message.channel.send(s)
                     return
@@ -161,24 +161,12 @@ export async function DiscordStart(token: string, guildId?: string) {
         }
         c.on("guildCreate", async guild => {
             try {
-                c.owner.send(guild.name)
+                console.log("加入伺服器: " + guild.name)
             } catch (e) {
                 console.log(e);
             }
         })
-        //  c.on("guildCreate", async guild => {
-        //      if (db.GuildConfig.existsBy({ guildId: guild.id })) return
-        //      const gc = db.GuildConfig.create({ guildId: guild.id, name: guild.name })
-        //      gc.queue = await db.MusicQueue.save()
-        //      await gc.save()
-        //  })
 
-        //  c.on("messageDelete", async message => {
-        //      const gc = await db.GuildConfig.findOneBy({ guildId: message.guildId })
-        //      const channel = message.guild.channels.cache.get(gc.messageDelete)
-        //      if (!channel.isTextBased()) return
-        //      channel.send({ content: message.content, files: message.attachments.map(x => new AttachmentBuilder(x.url, x)) })
-        //  })
     })
     await client.login(token)
 }

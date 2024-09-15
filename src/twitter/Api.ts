@@ -103,6 +103,17 @@ const headers = new AxiosHeaders({
     "X-Twitter-Auth-Type": "OAuth2Session",
     "X-Twitter-Client-Language": "zh-tw"
 })
+/**
+ * 1 2 "4 5"
+ */
+type KeyWord = `"${string}"`|string
+interface SearchData {
+    hasWords: KeyWord[];
+    except: string[]; // -1 -2 -3
+    orWord: string[]; //(1 2 3)
+    tags: string[];   // (#1 #2)
+    user: string; // (from:NemesisXDFP)
+}
 
 class TwitterApi {
     //#region base methods
@@ -410,6 +421,13 @@ class TwitterApi {
         })
     }
 
+    SearchWithOption(rawData: SearchData) {
+        var q = rawData.hasWords.join(' ') + 
+        rawData.except.join(' -') +
+        ' (form:' + rawData.user+') ('+
+        rawData.orWord.join(' OR ') + ')'
+        return this.Search(q)
+    }
     Search(rawQuery: string, product = "Top") {
         return this.get(SEARCH, {
             variables: JSON.stringify({ rawQuery, "count": 20, "querySource": "typed_query", product }),
@@ -1397,7 +1415,12 @@ class TwitterApi {
                 "responsive_web_enhance_cards_enabled": false
             })
         })
-        return jsonpath.query(res, '$..tweet_results.result').map(x => 'legacy' in x ? new TwitterTweet(x) : new TwitterTweet(x.tweet))
+        let array:TwitterTweet[] = []
+        for (const result of jsonpath.query(res, '$..tweet_results.result')) {
+            let tweet = new TwitterTweet('legacy' in result ? result : result.tweet)
+            array.push(tweet)
+        }
+        return array
     }
 
     async ListCreate(name: string, description?: string, isPrivate = true) {
