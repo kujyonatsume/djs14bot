@@ -31,7 +31,7 @@ import {
 } from "discord.js";
 
 interface IGroup { name: string, local?: string }
-export class SubBuilder extends _SB { constructor(public group?: IGroup) { super() } }
+export class SubBuilder extends _SB { constructor(public group?: IGroup) { super(); } }
 export { SlashBuilder, SubGroupBuilder }
 export type OptionAnd<T = SlashBuilder | SubGroupBuilder | SubBuilder> = IOption & T
 var subs: SubBuilder[] = []
@@ -49,7 +49,7 @@ type CompleteFunc = (mod: Module, i: AutocompleteInteraction, current: string | 
 
 export class Module implements EventFunc {
     async init() { }
-    protected i: ChatInputCommandInteraction
+    public i: ChatInputCommandInteraction
     setInter(inter: ChatInputCommandInteraction) {
         this.i = inter
     }
@@ -175,7 +175,7 @@ export function Command(o: Partial<Named & CmdPerm> = {}) {
     }
 }
 
-export function SubCommand(o: Partial<Named & { group: IGroup }> = {}) {
+export function SubCommand(o: Partial<Named & { group?: IGroup }> = {}) {
     return (target: Module, key: string, descriptor: PropertyDescriptor) => {
         subs.push(CreateCmd(target, key, new SubBuilder(o.group), o))
         opts = []
@@ -191,7 +191,7 @@ export function Group(o: Partial<Named & CmdPerm> = {}) {
     return (target: Constructor<Module>) => {
         if (subs.length == 0) return
         const slash = Create(new SlashBuilder(), target.name, o)
-        for (const [name, sub] of Object.entries(Object.groupBy(subs,x => x.group.name || "0"))) {
+        for (const [name, sub] of Object.entries(Object.groupBy(subs, x => `${x.group?.name}` ))) {
             if (name != "0") {
                 const group = Create(new SubGroupBuilder(), name, sub[0].group)
                 count += group.options.push(...sub)

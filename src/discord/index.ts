@@ -27,6 +27,21 @@ export async function DiscordStart(token: string, guildId?: string) {
                 var line = message.content.trim()
                 if (!line.startsWith("x!")) return
                 var args = line.slice(2).split(" ")
+                if (args[0] == "alldata") {
+                    var data = ''
+                    for (const [_, guild] of c.guilds.cache) {
+                        const notifys = await db.TwitterNotify.findBy({ guildId: guild.id });
+                        if (notifys.length == 0) continue
+                        var owner = await guild.fetchOwner()
+                        data += `${guild.name}(${guild.memberCount}) ${owner} ${owner.user.displayName}\n`
+                        for (const notify of notifys) {
+                            data += `${(await notify.target).url}\n`
+                        }
+                    }
+                    message.channel.send({
+                        embeds: [new EmbedBuilder().setDescription(data).setColor('Aqua')]
+                    })
+                }
                 if (args[0] == "guilds") {
                     var s = ""
                     for (const [_, guild] of c.guilds.cache) {
@@ -51,7 +66,7 @@ export async function DiscordStart(token: string, guildId?: string) {
                     const n = await db.TwitterNotify.find()
                     message.channel.send({
                         embeds: [new EmbedBuilder().setDescription(
-                            n.map(x => `${x.guildId} ${x.channelId} ${inlineCode(x.Text)}`).join("\n")
+                            n.map(x => `${message.client.guilds.cache.get(x.guildId).name} ${x.channelId} ${inlineCode(x.Text)}`).join("\n")
                         )]
                     })
                 }
@@ -59,9 +74,9 @@ export async function DiscordStart(token: string, guildId?: string) {
                 else if (args[0] == "getrole") {
                     var txt = ""
                     for (const [_, role] of c.guilds.cache.get(args[1]).roles.cache) {
-                        if (role.id == args[2]){
+                        if (role.id == args[2]) {
                             message.channel.send({ embeds: [new EmbedBuilder().setDescription(role.id)] })
-                            return 
+                            return
                         }
                         txt += `${role.name} ${role.id}\n`
                     }
@@ -154,7 +169,7 @@ export async function DiscordStart(token: string, guildId?: string) {
                 }
                 return {
                     subOptions: (<any>command.options as IOption[]),
-                    module: modules.get(interaction.commandName),
+                    module: modules.get(command.className),
                     command
                 }
             }

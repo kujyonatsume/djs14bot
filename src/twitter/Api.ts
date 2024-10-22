@@ -428,7 +428,7 @@ class TwitterApi {
         rawData.orWord.join(' OR ') + ')'
         return this.Search(q)
     }
-    Search(rawQuery: string, product = "Top") {
+    Search(rawQuery: string, product: "Top" | "Latest" = "Latest") {
         return this.get(SEARCH, {
             variables: JSON.stringify({ rawQuery, "count": 20, "querySource": "typed_query", product }),
             features: JSON.stringify({
