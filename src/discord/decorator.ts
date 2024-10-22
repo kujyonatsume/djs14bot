@@ -31,7 +31,7 @@ import {
 } from "discord.js";
 
 interface IGroup { name: string, local?: string }
-export class SubBuilder extends _SB { constructor(public group?: IGroup) { super(); } }
+export class SubBuilder extends _SB { constructor(public group?: IGroup) { super() } }
 export { SlashBuilder, SubGroupBuilder }
 export type OptionAnd<T = SlashBuilder | SubGroupBuilder | SubBuilder> = IOption & T
 var subs: SubBuilder[] = []
