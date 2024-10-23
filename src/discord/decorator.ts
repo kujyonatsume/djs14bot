@@ -191,7 +191,7 @@ export function Group(o: Partial<Named & CmdPerm> = {}) {
     return (target: Constructor<Module>) => {
         if (subs.length == 0) return
         const slash = Create(new SlashBuilder(), target.name, o)
-        for (const [name, sub] of Object.entries(Object.groupBy(subs, x => `${x.group?.name}` ))) {
+        for (const [name, sub] of Object.entries(Object.groupBy(subs, x => x.group?.name ?? "0" ))) {
             if (name != "0") {
                 const group = Create(new SubGroupBuilder(), name, sub[0].group)
                 count += group.options.push(...sub)
@@ -202,4 +202,3 @@ export function Group(o: Partial<Named & CmdPerm> = {}) {
         subs = []
     }
 }
-
