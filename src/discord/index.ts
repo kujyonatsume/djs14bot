@@ -142,7 +142,7 @@ export async function DiscordStart(token: string, guildId?: string) {
                     console.log()
                     console.log(`\n${new Date().toLocaleTimeString()}[command start] ${interaction.commandName} ${line}`);
 
-                    module.setInter(interaction)
+                    module.i = interaction
                     let options = subOptions.map((x => {
                         let d = interaction.options.get(x.name);
                         return x.name, d ? d[x.parse] || d.value : null
@@ -167,9 +167,11 @@ export async function DiscordStart(token: string, guildId?: string) {
                         command = (<any>command.options as IOption[]).find(x => x.name == group) as OptionAnd
                     command = (<any>command.options as IOption[]).find(x => x.name == sub) as OptionAnd
                 }
+                console.log(command.className);
+                
                 return {
                     subOptions: (<any>command.options as IOption[]),
-                    module: modules.get(command.className),
+                    module: modules.get(command.className.toLowerCase()),
                     command
                 }
             }
