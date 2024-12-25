@@ -1,0 +1,6 @@
+.vscode
+*lock*
+/node_modules
+/data/config.json
+/data/*.db
+-*
