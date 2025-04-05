@@ -57,7 +57,9 @@ export class Module implements EventFunc {
     get Embed() {
         return new EmbedBuilder()
     }
-
+    
+    static YesOrNo = [{ name: "Yes", value: 1, name_localizations: { "zh-TW": "是" } }, { name: "No", value: 0, name_localizations: { "zh-TW": "否" } }]
+    
     SuccessEmbed(desc: string, ephemeral?: boolean): Promise<Message<boolean>>
     SuccessEmbed(embed: APIEmbed | EmbedBuilder, ephemeral?: boolean): Promise<Message<boolean>>
     SuccessEmbed(render: (embed: EmbedBuilder) => EmbedBuilder, ephemeral?: boolean): Promise<Message<boolean>>

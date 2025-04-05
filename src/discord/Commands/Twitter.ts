@@ -1,7 +1,7 @@
 import { Like } from "typeorm"
 import { db } from "../../db";
 import { twitterApi, TwitterList } from "../../twitter";
-import { Group, Module, Option, SubGroup } from "../decorator";
+import { Command, Group, Module, Option, SubGroup } from "../decorator";
 import { AutocompleteInteraction, ChannelType, GuildBasedChannel, hyperlink, inlineCode, Role, TextChannel, User } from 'discord.js';
 import config from "../../config"
 
@@ -17,18 +17,14 @@ export class Twitter extends Module {
         for (const u of await db.TwitterUser.find({ select: ["id"] })) {
             if (Twitter.List.members.find(x => x.id == u.id)) continue
             await Twitter.List.addMamber(u.id)
-            await Promise.delay(1000)
+            await Promise.delay(100)
         }
-
-        setTimeout(async () => await this.Timer(), 1);
-    }
-    async Timer() {
-
         console.log(`[Twitter Notify]: ${Twitter.List.members.map(x => x.screen_name).join(", ")}`);
+        setTimeout(this.Timer, config.ms)
+    }
 
-        while (true) {
+    async Timer() {
             try {
-                await Promise.delay(config.ms)
                 const dbusers = await db.TwitterUser.find()
                 const tweets = (await Twitter.List.getTweets()).sort((a, b) => Number(a.id) - Number(b.id))
                 for (const user of dbusers) {
@@ -104,14 +100,12 @@ export class Twitter extends Module {
                 console.log(e)
                 console.log("\n");
             }
-        }
     }
 
     static notify = SubGroup({ name: "notify", local: "通知" })
 
     static async FindOrCreateUser(screen_name: string) {
         let dbUser = await db.TwitterUser.findUser(screen_name)
-        let exists = Boolean(dbUser)
         if (!dbUser) {
             const apiUser = await twitterApi.getUserByScreenName(screen_name)
             await this.List.addMamber(apiUser.id)
@@ -126,7 +120,7 @@ export class Twitter extends Module {
                 dbUser = await db.TwitterUser.findId(apiUser.id)
             }
         }
-        return { dbUser, exists }
+        return dbUser
     }
 
     static async guildNotify(mod: Twitter, i: AutocompleteInteraction, current: string | number) {
@@ -161,109 +155,93 @@ export class Twitter extends Module {
         return Array.from(userset)
     }
 
-    static YesOrNo = [{ name: "Yes", value: 1, name_localizations: { "zh-TW": "是" } }, { name: "No", value: 0, name_localizations: { "zh-TW": "否" } }]
-
-    @Twitter.notify({ local: "新增爬蟲", name: "create", desc: "若無符合的帳號請自行輸入 通知身分組請直接加入通知訊息中" })
-    async cteateNotify(@Option({ local: "帳號", exec: Twitter.allName }) screen_name: string,
-        @Option({ local: "通知頻道", channel_types: [ChannelType.GuildText, ChannelType.GuildAnnouncement] }) channel: TextChannel,
-        @Option({ local: "通知訊息", required: false }) text?: string) {
+    @Command({ local: "新增通知", name: "notify-create", desc: "若無符合的帳號請自行輸入 通知身分組請直接加入通知訊息中" })
+    async notifyCteate(@Option({ local: "帳號", description:"若無符合的帳號請自行輸入" , exec: Twitter.allName }) screen_name: string,
+        @Option({ local: "通知頻道", description:"要讓機器人發送通知的頻道", channel_types: [ChannelType.GuildText, ChannelType.GuildAnnouncement] }) channel: TextChannel,
+        @Option({ local: "通知訊息", description:"要標註的身分組以及額外要通知的訊息", required: false }) text?: string) {
         screen_name = screen_name.replace(/(.*?)\/\/(.*?)\/|@/, "").split("?")[0];
-        const { dbUser, exists } = await Twitter.FindOrCreateUser(screen_name)
+        const dbUser = await Twitter.FindOrCreateUser(screen_name)
         if (await db.TwitterNotify.existsBy({ guildId: this.i.guildId, targetId: dbUser.id }))
-            return await this.SuccessEmbed(`伺服器已存在此爬蟲, 如果要更新請使用 ${inlineCode("/twitter notify update")}`, true)
+            return await this.SuccessEmbed(`伺服器已存在此通知, 如果要更新請使用 ${inlineCode("/twitter notify update")}`, true)
 
         let notify = db.TwitterNotify.create({ guildId: this.i.guildId, targetId: dbUser.id, channelId: channel.id })
         notify.text = text ?? ""
         notify.target = Promise.resolve(dbUser)
         await notify.save()
 
-        return await this.SuccessEmbed(`已新增爬蟲 ${inlineCode(screen_name)}`, true)
+        return await this.SuccessEmbed(`已新增通知 ${inlineCode(screen_name)}`, true)
     }
 
-    @Twitter.notify({ local: "更新爬蟲", name: "update" })
-    async updateNotify(@Option({ local: "帳號", exec: Twitter.guildNotify }) screen_name: string,
+    @Command({ local: "更新通知", name: "notify-update" , desc: "更新帳號的通知頻道或訊息" })
+    async notifyUpdate(@Option({ local: "帳號", exec: Twitter.guildNotify }) screen_name: string,
         @Option({ local: "移動至頻道", required: false, channel_types: [ChannelType.GuildText, ChannelType.GuildAnnouncement] }) channel?: TextChannel,
         @Option({ local: "新的通知訊息", required: false }) text?: string) {
-        const { dbUser } = await Twitter.FindOrCreateUser(screen_name)
-        let notify = await db.TwitterNotify.findOneBy({ guildId: this.i.guildId, targetId: dbUser.id })
+        const { id } = await Twitter.FindOrCreateUser(screen_name)
+        let notify = await db.TwitterNotify.findOneBy({ guildId: this.i.guildId, targetId: id })
         if (notify) {
             if (channel?.id) notify.channelId = channel.id
             if (text) notify.text = text
             await notify.save()
-            return await this.SuccessEmbed(eb => eb.setDescription(`已更新爬蟲 ${inlineCode(screen_name)}`)
-                .addFields({ name: "通知頻道", value: `<#${notify.channelId}>` }, { name: "通知訊息", value: notify.Text ?? "未設定" }), true)
+            return await this.SuccessEmbed(eb => eb.setDescription(`已更新通知 ${inlineCode(screen_name)}`)
+                .addFields({ name: "通知頻道", value: `<#${notify.channelId}>` }, { name: "通知訊息", value: notify.Text ?? "尚未設定" }), true)
         }
-        return await this.SuccessEmbed(`伺服器不存在此爬蟲, 如果要新增請使用 ${inlineCode("/twitter notify create")}`, true)
+        return await this.SuccessEmbed(`伺服器不存在此通知, 如果要新增請使用 ${inlineCode("/twitter notify create")}`, true)
     }
 
-    @Twitter.notify({ local: "篩選推文", name: "filier", desc: "篩選推文狀態 | 預設值: 發佈 引用" })
-    async filierNotifyStatus(@Option({ local: "帳號", exec: Twitter.guildNotify }) screen_name: string,
-        @Option({ local: "發佈", required: false }) post?: boolean,
-        @Option({ local: "轉推", required: false }) retweet?: boolean,
-        @Option({ local: "引用", required: false }) qoute?: boolean,
-        @Option({ local: "回復", required: false }) reply?: boolean
-    ) {
-        const { dbUser } = await Twitter.FindOrCreateUser(screen_name)
-        let notify = await db.TwitterNotify.findOneBy({ guildId: this.i.guildId, targetId: dbUser.id })
-        let data = new Set(JSON.parse(notify.type) as string[])
-        console.log(data);
-        update("發佈", post); update("轉推", retweet); update("引用", qoute); update("回復", reply)
-        notify.type = JSON.stringify([...data])
-        await notify.save()
-        return await this.SuccessEmbed(`${screen_name} 將會搜尋 ${[...data].map(inlineCode).join(" ")} 貼文`, true)
-
-        function update(type: string, value?: boolean) {
-            console.log(type, value);
-            if (typeof value !== "boolean") return;
-            if (value) data.add(type)
-            else data.delete(type)
-        }
-    }
-
-    @Twitter.notify({ local: "推文篩選列表", name: "filierlist", desc: "顯示推文篩選列表" })
-    async NotifyStatus() {
-        let users = "", status = ""
-        for (const notify of await db.TwitterNotify.findBy({ guildId: this.i.guildId })) {
-            users += `${inlineCode((await notify.target).screen_name)}\n`
-            status += `${(JSON.parse(notify.type) as string[]).map(inlineCode).join(" ")}\n`
-        }
-        if (users == "") return await this.ErrorEmbed(`伺服器未加入爬蟲`)
-        if (status == "") status += "沒有選擇的狀態"
-        return await this.SuccessEmbed(x => x.setTitle("伺服器推文通知列表")
-            .setFields({ name: "使用者", value: users, inline: true }, { name: "已啟用", value: status, inline: true }), true)
-    }
-
-    @Twitter.notify({ local: "移除爬蟲", name: "remove" })
-    async removeNotify(@Option({ local: "帳號", exec: Twitter.guildNotify }) screen_name: string) {
+    @Command({ local: "移除通知", name: "notify-remove" , desc: "刪除伺服器的通知" })
+    async notifyRemove(@Option({ local: "帳號", exec: Twitter.guildNotify }) screen_name: string) {
         let dbUser = await db.TwitterUser.findUser(screen_name)
         if (dbUser) {
             let notify = await db.TwitterNotify.findOneBy({ guildId: this.i.guildId, targetId: dbUser.id })
             if (notify) {
                 notify.remove()
-                return await this.SuccessEmbed(`已移除爬蟲 ${inlineCode(screen_name)}`, true)
+                return await this.SuccessEmbed(`已移除通知 ${inlineCode(screen_name)}`, true)
             }
         }
-        return await this.SuccessEmbed(`伺服器不存在此爬蟲`, true)
+        return await this.SuccessEmbed(`伺服器不存在此通知`, true)
     }
 
-    @Twitter.notify({ local: "爬蟲清單", name: "list" })
-    async listNotify() {
-        let users = "", channels = "", notifys = ""
+    @Command({ local: "伺服器通知列表", name:"notify-list" , desc: "查詢通知列表" })
+    async notifyList() {
+        let users = "", channels = "", notices = ""
         for (const notify of await db.TwitterNotify.findBy({ guildId: this.i.guildId })) {
             let target = await notify.target
             users += `${inlineCode(target.screen_name)}\n`
-            channels += `<#${notify.channelId}>\n`
+            channels += `<#${notify.channelId}>/${(JSON.parse(notify.type) as string[]).map(inlineCode).join(" ")}\n`
             let msg = ""
-            if (notify.Text) msg += ` ${inlineCode(notify.Text)}`
-            notifys += `${msg == "" ? "無" : msg}\n`
+            if (notify.Text) msg += ` ${notify.Text}`
+            notices += `${msg == "" ? "`尚未設定`" : msg}\n`
         }
-        if (users == "") await this.SuccessEmbed(`伺服器未加入爬蟲`)
+        if (users == "") await this.SuccessEmbed(`伺服器未加入通知帳號`)
         return await this.SuccessEmbed({
             title: "伺服器推文通知列表",
             fields: [{ name: "使用者", value: users, inline: true },
-            { name: "通知頻道", value: channels, inline: true },
-            { name: "通知訊息", value: notifys, inline: true },
+            { name: "通知頻道/類型", value: channels, inline: true },
+            { name: "通知訊息", value: notices, inline: true },
             ]
         }, true)
+    }
+    @Command({ local: "要通知的推文", name: "subscribe-notify-type", desc: "選擇要通知的推文類型：發佈、轉推、引用、回復 | 預設：發佈、引用" })
+    async subscribeNotifyType(@Option({ local: "帳號", exec: Twitter.guildNotify }) screen_name: string,
+        @Option({ local: "發佈", choices: Twitter.YesOrNo, required: false }) post?: number,
+        @Option({ local: "轉推", choices: Twitter.YesOrNo, required: false }) retweet?: number,
+        @Option({ local: "引用", choices: Twitter.YesOrNo, required: false }) quote?: number,
+        @Option({ local: "回復", choices: Twitter.YesOrNo, required: false }) reply?: number
+    ) {
+        const { id } = await Twitter.FindOrCreateUser(screen_name)
+        let notify = await db.TwitterNotify.findOneBy({ guildId: this.i.guildId, targetId: id })
+        let data = new Set(JSON.parse(notify.type) as string[])
+        console.log(data);
+        update("發佈", post); update("轉推", retweet); update("引用", quote); update("回復", reply)
+        notify.type = JSON.stringify([...data])
+        await notify.save()
+        return await this.SuccessEmbed(`將會搜尋 ${screen_name} ${[...data].map(inlineCode).join(" ")} 的貼文`, true)
+
+        function update(type: string, value?: number) {
+            console.log(type, value);
+            if (typeof value !== "number") return;
+            if (value) data.add(type)
+            else data.delete(type)
+        }
     }
 }

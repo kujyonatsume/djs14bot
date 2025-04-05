@@ -1,26 +1,49 @@
-import { AttachmentBuilder, Client, codeBlock, Collection, EmbedBuilder, inlineCode, Interaction, Routes, TextChannel } from "discord.js";
+import { ActivityType, AttachmentBuilder, Client, codeBlock, Collection, EmbedBuilder, GatewayIntentBits, inlineCode, Interaction, Routes, TextChannel } from "discord.js";
 import * as AppModule from "./Commands";
 import { commands, IOption, count, OptionAnd, Module } from "./decorator";
 import { db } from "../db";
+import { TwitterUser } from "../db/entity";
 
 const modules = new Collection<string, Module>()
 
-export const client = new Client({ intents: 3276799 })
+export const client = new Client({
+    intents:
+        (GatewayIntentBits.MessageContent | GatewayIntentBits.GuildMembers | GatewayIntentBits.GuildPresences) ^
+        Object.values(GatewayIntentBits).filter(x => typeof x == 'number').reduce((p, c) => p | c, 0)
+})
 
 export async function DiscordStart(token: string, guildId?: string) {
 
     client.on("ready", async c => {
+        if (guildId) c.rest.put(Routes.applicationGuildCommands(c.user.id, guildId), { body: [] })
+
+        console.log(`${c.user.username} 初始化開始`)
         for (const [key, Mod] of Object.entries(AppModule)) {
             const mod = new Mod(c)
             modules.set(key.toLowerCase(), mod)
             await mod.init()
         }
+        
         console.log(`${c.user.username} 初始化完成`)
         let size = (await c.application.commands.set((commands as any).filter((x: { only: any; }) => !x.only))).size
         if (c.guilds.cache.has(guildId))
             size += (await c.application.commands.set((commands as any).filter((x: { only: any; }) => x.only), guildId)).size
         console.log(`已註冊 ${size} 個模組 總共 ${count} 個指令`)
 
+        let flag = false
+        async function setActivity() {
+            c.user.setActivity((flag = !flag)
+                ? { name: `${c.guilds.cache.size} 個伺服器` } :
+                {
+                    name: `${await TwitterUser.count()} 個通知`,
+                    type: ActivityType.Watching
+                }
+            )
+        }
+        setActivity()
+        setInterval(setActivity, 15 * 1000)
+
+        /* messageCreate
         c.on("messageCreate", async message => {
             try {
                 if (message.guild.id != guildId || message.author.id != "386473957806833664") return
@@ -124,6 +147,7 @@ export async function DiscordStart(token: string, guildId?: string) {
             } catch (e) { console.log(e); }
 
         })
+        */
 
         c.on("interactionCreate", async interaction => {
 
@@ -168,7 +192,7 @@ export async function DiscordStart(token: string, guildId?: string) {
                     command = (<any>command.options as IOption[]).find(x => x.name == sub) as OptionAnd
                 }
                 console.log(command.className);
-                
+
                 return {
                     subOptions: (<any>command.options as IOption[]),
                     module: modules.get(command.className.toLowerCase()),
