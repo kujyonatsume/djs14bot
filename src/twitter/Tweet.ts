@@ -37,6 +37,7 @@ interface TweetLegacy {
 export class TwitterTweet {
     #data: TweetResult
     readonly id: string
+    readonly URL: string
     full_text: string
     readonly text: string
     readonly created_at: Date
@@ -46,6 +47,7 @@ export class TwitterTweet {
     readonly isRetweet: boolean
     readonly isQuote: boolean
     readonly isReply: boolean
+    readonly type: "回復" | "轉推" | "引用" | "發佈"
     views_count: number
     favorite_count: number
     retweet_count: number
@@ -62,6 +64,8 @@ export class TwitterTweet {
         this.isRetweet = Boolean(data.legacy.retweeted_status_result)
         this.isQuote = Boolean(data.quoted_status_result)
         this.isReply = Boolean(data.legacy.in_reply_to_status_id_str)
+        this.type = this.isReply ? "回復" : this.isRetweet ? "轉推" : this.isQuote ? "引用" : "發佈"
+
         this.favorite_count = data.legacy.favorite_count
         this.retweet_count = data.legacy.retweet_count
         this.quote_count = data.legacy.quote_count
@@ -75,10 +79,7 @@ export class TwitterTweet {
         let text = (this.medias ?? []).reduce((txt, x) => txt.replace(x.url, ""), data.legacy.full_text)
         text = link.reduce((txt, x) => txt.replace(x.url, x.expanded_url), text.replace(/RT @\w+: /, ""))
         this.text = text.length == 0 ? null : text
-    }
-
-    get type() {
-        return this.isReply ? "回復" : this.isRetweet ? "轉推" : this.isQuote ? "引用" : "發佈"
+        this.URL = `https://x.com/${this.author.screen_name}/status/${this.id}`
     }
 
     get_detail() {

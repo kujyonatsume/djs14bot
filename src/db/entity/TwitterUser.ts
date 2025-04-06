@@ -1,5 +1,6 @@
 import { Entity, Column, OneToMany, IdxEntity } from "./Entity"
 import { TwitterNotify } from "./TwitterNotify"
+import { enabled } from './../../../node_modules/colors/index.d';
 
 
 @Entity()
@@ -23,6 +24,8 @@ export class TwitterUser extends IdxEntity {
     @OneToMany(() => TwitterNotify, x => x.target, { eager: true })
     notifys: TwitterNotify[]
 
+    @Column({ nullable: false, default:true })
+    enabled: Boolean
     static async findUser(screen_name: string) {
         return this.findOneBy({ screen_name })
     }

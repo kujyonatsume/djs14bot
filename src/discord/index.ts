@@ -15,7 +15,7 @@ export const client = new Client({
 export async function DiscordStart(token: string, guildId?: string) {
 
     client.on("ready", async c => {
-        if (guildId) c.rest.put(Routes.applicationGuildCommands(c.user.id, guildId), { body: [] })
+        //  if (guildId) c.rest.put(Routes.applicationGuildCommands(c.user.id, guildId), { body: [] })
 
         console.log(`${c.user.username} 初始化開始`)
         for (const [key, Mod] of Object.entries(AppModule)) {

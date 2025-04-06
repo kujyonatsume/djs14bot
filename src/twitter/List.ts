@@ -27,13 +27,13 @@ export class TwitterList {
     this.member_count = data.member_count
     this.created_at = new Date(data.created_at)
   }
-  addMamber(userId: string) {
+  addMember(userId: string) {
     return twitterApi.ListMemberAdd(this.id, userId)
   }
-  removeMamber(userId: string) {
+  removeMember(userId: string) {
     return twitterApi.ListMemberRemove(this.id, userId)
   }
-  getMamber() {
+  getMember() {
     return twitterApi.getListMember(this.id)
   }
   getTweets() {

@@ -27,7 +27,8 @@ import {
     InteractionReplyOptions,
     APIEmbed,
     Message,
-    ColorResolvable
+    ColorResolvable,
+    InteractionEditReplyOptions
 } from "discord.js";
 
 interface IGroup { name: string, local?: string }
@@ -85,16 +86,17 @@ export class Module implements EventFunc {
         else if (!(data instanceof EmbedBuilder))
             data = EmbedBuilder.from(data);
         if (!(data as EmbedBuilder).data.color) data.setColor(color)
-        return this.send({ embeds: [data], ephemeral })
+        return this.send({ embeds: [data], flags: ephemeral ? 64 : undefined })
     }
-    async send(options: string | MessagePayload | InteractionReplyOptions) {
+    async send(options: string | MessagePayload | InteractionReplyOptions | InteractionEditReplyOptions) {
         if (this.i.deferred)
-            return await this.i.editReply(options)
+            return await this.i.editReply(options as string | MessagePayload | InteractionEditReplyOptions)
 
+        
         if (this.i.replied)
-            return await this.i.followUp(options)
+            return await this.i.followUp(options as string | MessagePayload | InteractionReplyOptions)
 
-        const x = await this.i.reply(options);
+        const x = await this.i.reply(options as InteractionReplyOptions);
         return await x.fetch();
     }
 

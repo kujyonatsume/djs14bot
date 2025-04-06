@@ -1,3 +1,4 @@
+import "colors";
 import { randomInt } from 'crypto';
 import { Client, Emoji, Message, User } from 'discord.js';
 

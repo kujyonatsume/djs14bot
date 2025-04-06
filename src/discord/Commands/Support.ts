@@ -27,8 +27,6 @@ export class Support extends Module {
     }
     @Command({ name: "delete-twitter-notify", permission: "Administrator", only: true })
     async deleteNotify(@Option({ exec: Twitter.allNotify }) screen_name: string) {
-        if (!this.isSupported)
-            return await this.ErrorEmbed(`只能在特定伺服器使用`, true)
         let dbuser = await db.TwitterUser.findUser(screen_name)
         await db.TwitterNotify.remove(dbuser.notifys)
         await dbuser.remove()
@@ -36,11 +34,28 @@ export class Support extends Module {
     }
     
     @Command({ name: "list-twitter-notify", permission: "Administrator", only: true })
-    async listNotify(@Option({ required:false }) screen_name?: string) {
-        if (!this.isSupported)
-            return await this.ErrorEmbed(`只能在特定伺服器使用`, true)
-        var users = await db.TwitterUser.findBy({ screen_name })
-        return await this.SuccessEmbed(`已刪除通知資料 ${users.map(x => hyperlink(x.name,`${x.url}`)).join('\n')}`, true)
+    async listNotify(@Option({ required:false }) page?: number) {
+        page ??= 0
+        var users = await db.TwitterUser.find({ where:{ enabled:true }, skip: page * 20 , take: 20 })
+        return await this.SuccessEmbed(`已列出通知資料\n${users.map(x => hyperlink(x.name,`${x.url}`)).join('\n')}`, true)
+    }
+
+    @Command({ name: "disable-twitter-notify", permission: "Administrator", only: true })
+    async disableNotify(@Option({ required:false }) screen_name?: string) {
+        let user = await db.TwitterUser.findUser(screen_name)
+        user.enabled = false
+        Twitter.List.removeMember(user.id)
+        for (const n of user.notifys) {
+            await n.remove()
+        }
+        await user.save()
+        return await this.SuccessEmbed(`已封鎖 ${inlineCode(screen_name)} 通知`, true)
+    }
+    
+    @Command({ name: "disable-twitter-list", permission: "Administrator", only: true })
+    async disableList() {
+        let users = await db.TwitterUser.find({ select:['screen_name'], where: { enabled: false } })
+        return await this.SuccessEmbed(`已封鎖 ${users.length} 個使用者\n ${users.map(x => x.screen_name).join("、")}`, true)
     }
 
     @Command({ local: "錯誤回報", name: "report", permission: "Administrator" })
@@ -56,7 +71,7 @@ export class Support extends Module {
 
     @Command({ local: "幫助", name: "help", permission: "Administrator" })
     async help() {
-        await this.SuccessEmbed(x => x.setImage("https://kujyonatsume.github.io/help.jpg"))
+        await this.SuccessEmbed(x => x.setDescription(`[圖片連結](https://kujyonatsume.github.io/help.jpg)`).setImage("https://kujyonatsume.github.io/help.jpg"))
     }
 
     @Command({ local: "邀請連結", name: "invite" })
