@@ -45,14 +45,4 @@ declare module "discord.js" {
         userUpdate?(oldUser: User | PartialUser, newUser: User): Awaited<Promise<any>>;
         voiceStateUpdate?(oldState: VoiceState, newState: VoiceState): Awaited<Promise<any>>;
     }
-    export interface Message {
-        emojiParse(): void;
-        emojis: Emoji[];
-    }
 }
-Object.defineProperty(Message.prototype, "emojiParse", {
-    value(this: Message) {
-        this.emojis = [...this.content.matchAll(/<?(a:)?(\w{2,32}):(\d{17,19})>?/)]
-            .map(x => new Emoji(this.client, { animated: Boolean(x[1]), name: x[2], id: x[3] }));
-    }
-})
