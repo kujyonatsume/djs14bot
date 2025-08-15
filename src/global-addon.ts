@@ -3,6 +3,7 @@ import { randomInt } from 'crypto';
 import { Client, Emoji, Message, User } from 'discord.js';
 
 declare global {
+    function sleep(ms: number): Promise<void>
     interface Array<T> {
         groupBy(callback: (value: T, i: number) => PropertyKey): Partial<Record<PropertyKey, T[]>>
     }
@@ -15,7 +16,7 @@ declare global {
 }
 
 Math.randomInt = randomInt
-Promise.delay = (ms: number) => new Promise<void>(resolve => setTimeout(resolve, ms))
+globalThis.sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 Array.prototype.groupBy = function <T>(this: T[], fn: (v: T, i: number) => PropertyKey) {
     return Object.groupBy(this, fn)
 }
