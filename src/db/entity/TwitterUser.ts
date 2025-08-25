@@ -1,7 +1,5 @@
 import { Entity, Column, OneToMany, IdxEntity } from "./Entity"
 import { TwitterNotify } from "./TwitterNotify"
-import { enabled } from './../../../node_modules/colors/index.d';
-
 
 @Entity()
 export class TwitterUser extends IdxEntity {
