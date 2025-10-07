@@ -1,5 +1,6 @@
 {
   "ms":30000,
+  "ownerId": "",
   "guildId": "",
   "token": "",
   "twitter": {

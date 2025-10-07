@@ -10,6 +10,7 @@
       "djs-bot": "file:",
       "jsonpath": "^1.1.1",
       "reflect-metadata": "^0.1.13",
+      "twitter-openapi-typescript": "^0.0.55",
       "typeorm": "^0.3.20"
    },
    "devDependencies": {

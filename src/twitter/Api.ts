@@ -22,7 +22,7 @@ const USER_TWEETS = "https://twitter.com/i/api/graphql/WzJjibAcDa-oCjCcLOotcg/Us
 const USER_MEDIAS = "https://twitter.com/i/api/graphql/cEjpJXA15Ok78yO4TUQPeQ/UserMedia"
 const USER_HIGHLIGHTS = "https://twitter.com/i/api/graphql/eOTTj_P8aj8rRzED2BzzLQ/UserHighlightsTweets"
 const USER_LIKES = "https://twitter.com/i/api/graphql/B8I_QCljDBVfin21TTWMqA/Likes"
-const USER_TWEETS_WITH_REPLIES = "https://twitter.com/i/api/graphql/1-5o8Qhfc2kWlu_2rWNcug/UserTweetsAndReplies"
+const USER_TWEETS_WITH_REPLIES = "https://twitter.com/i/api/graphql/-O3QOHrVn1aOm_cF5wyTCQ/UserTweetsAndReplies"
 const TRENDS = "https://twitter.com/i/api/2/guide.json"
 const SEARCH = "https://twitter.com/i/api/graphql/Aj1nGkALq99Xg3XI0OZBtw/SearchTimeline"
 const SEARCH_TYPEHEAD = "https://twitter.com/i/api/1.1/search/typeahead.json"
@@ -106,7 +106,7 @@ const headers = new AxiosHeaders({
 /**
  * 1 2 "4 5"
  */
-type KeyWord = `"${string}"`|string
+type KeyWord = `"${string}"` | string
 interface SearchData {
     hasWords: KeyWord[];
     except: string[]; // -1 -2 -3
@@ -166,7 +166,7 @@ class TwitterApi {
 
     //#endregion
 
-    async getUserByScreenName(screen_name: string) {
+    async getUserByScreenName(screen_name: string): Promise<TwitterUser> {
         const res = await this.get(USER_BY_SCREEN_NAME, {
             variables: JSON.stringify({ screen_name, "withSafetyModeUserFields": true }),
             features: JSON.stringify({
@@ -183,13 +183,13 @@ class TwitterApi {
         return new TwitterUser(res.data.user.result);
     }
 
-    async getUserById(userId: string) {
+    async getUserById(userId: string): Promise<TwitterUser> {
         const users = await this.getUsersById([userId]);
         return users[0];
     }
 
-    async getUsersById(userIds: string[]) {
-        const res: any = await this.get(USER_BY_USER_IDS, {
+    async getUsersById(userIds: string[]): Promise<TwitterUser> {
+        const res = await this.get(USER_BY_USER_IDS, {
             variables: JSON.stringify({ userIds }), features: JSON.stringify({
                 "responsive_web_graphql_exclude_directive_enabled": true,
                 "verified_phone_label_enabled": false,
@@ -308,7 +308,7 @@ class TwitterApi {
         })
     }
 
-    async getUserTweets(userId: string, replies = false,) {
+    async getUserTweets(userId: string, replies = false): Promise<TwitterTweet[]> {
         let features: any
         let fieldToggles: any = { "withArticleRichContentState": false }
         let variables: any = {
@@ -422,10 +422,10 @@ class TwitterApi {
     }
 
     SearchWithOption(rawData: SearchData) {
-        var q = rawData.hasWords.join(' ') + 
-        rawData.except.join(' -') +
-        ' (form:' + rawData.user+') ('+
-        rawData.orWord.join(' OR ') + ')'
+        var q = rawData.hasWords.join(' ') +
+            rawData.except.join(' -') +
+            ' (form:' + rawData.user + ') (' +
+            rawData.orWord.join(' OR ') + ')'
         return this.Search(q)
     }
     Search(rawQuery: string, product: "Top" | "Latest" = "Latest") {
@@ -487,7 +487,7 @@ class TwitterApi {
         })
     }
 
-    async getTweetDetail(focalTweetId: string) {
+    async getTweetDetail(focalTweetId: string): Promise<TwitterDetail> {
         const res = await this.get(TWEET_DETAILS, {
             variables: JSON.stringify({
                 focalTweetId,
@@ -527,8 +527,8 @@ class TwitterApi {
 
     }
 
-    getTweetDetail_AsGuest(tweetId: string) {
-        const res = this.get(TWEET_DETAILS_AS_GUEST, {
+    async getTweetDetail_AsGuest(tweetId: string): Promise<TwitterDetail> {
+        const res = await this.get(TWEET_DETAILS_AS_GUEST, {
             variables: JSON.stringify({
                 tweetId, "withCommunity": false,
                 "includePromotedContent": true,
@@ -1321,7 +1321,7 @@ class TwitterApi {
         })
     }
 
-    async getLists() {
+    async getLists(): Promise<TwitterList[]> {
         const res = await this.get(AUSER_GET_LISTS, {
             variables: JSON.stringify({ "count": 100 }),
             features: JSON.stringify({
@@ -1349,7 +1349,7 @@ class TwitterApi {
         return jsonpath.query(res, '$..list').map(x => new TwitterList(x))
     }
 
-    async getList(listId: string) {
+    async getList(listId: string): Promise<TwitterList> {
         const res = await this.get(AUSER_GET_LIST, {
             variables: JSON.stringify({ listId }),
             features: JSON.stringify({
@@ -1362,7 +1362,7 @@ class TwitterApi {
         return new TwitterList(jsonpath.query(res, '$..list')[0])
     }
 
-    async getListMember(listId: string) {
+    async getListMember(listId: string): Promise<TwitterUser[]> {
         const res = await this.get(AUSER_GET_LIST_MEMBER, {
             variables: JSON.stringify({ listId, "count": 50, "withSafetyModeUserFields": true }),
             features: JSON.stringify({
@@ -1390,7 +1390,7 @@ class TwitterApi {
         return jsonpath.query(res, '$..user_results.result').map(x => new TwitterUser(x))
     }
 
-    async getListTweets(listId: string) {
+    async getListTweets(listId: string): Promise<TwitterTweet[]> {
         const res = await this.get(AUSER_GET_LIST_TWEETS, {
             variables: JSON.stringify({ listId, "count": 50 }),
             features: JSON.stringify({
@@ -1415,7 +1415,7 @@ class TwitterApi {
                 "responsive_web_enhance_cards_enabled": false
             })
         })
-        let array:TwitterTweet[] = []
+        let array: TwitterTweet[] = []
         for (const result of jsonpath.query(res, '$..tweet_results.result')) {
             let tweet = new TwitterTweet('legacy' in result ? result : result.tweet)
             array.push(tweet)
@@ -1423,7 +1423,7 @@ class TwitterApi {
         return array
     }
 
-    async ListCreate(name: string, description?: string, isPrivate = true) {
+    async ListCreate(name: string, description?: string, isPrivate = true): Promise<TwitterList> {
         const res = await this.post(AUSER_CREATE_LIST, {
             data: {
                 variables: { name, description, isPrivate },
